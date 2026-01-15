@@ -1,14 +1,18 @@
-import { useState } from 'react'
 import './index.css'
 import TaskManager from './component/TaskManger'
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Auth from './component/Auth';
 
 function App() {
-  const [count, setCount] = useState(0)
 
   return (
-    <>
-      <TaskManager />
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route index element={<Auth />} />
+        <Route path="/tasks" element={<TaskManager />} />
+      </Routes>
+    </BrowserRouter>
+
   )
 }
 
