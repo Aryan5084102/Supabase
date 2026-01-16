@@ -14,27 +14,32 @@ const TaskManager = () => {
     const {data, error} = await supabase.from('task').insert(newTask).select().single()
     console.log(data);
     setNewTask({ title: '', description: '' })
+
+    fetchTasks()
   }
 
   const deleteTask = async(id) =>{
     const {data, error} = await supabase.from('task').delete().eq('id', id)
   }
 
+  // const editTask = async(id) =>{
+  //   const {data, error} = await supabase.from('task').select('*').eq('id', id)
+  //   setNewTask({title: data[0].title, description: data[0].description})
+  // }
+
   const fetchTasks = async () =>{
     const {data, error} = await supabase.from('task').select('*').order('created_at', {ascending: true})
     setTasks(data)
   }
-  useEffect(() =>{
-    fetchTasks()
-  }, [tasks])
 
+  const signOut = async () =>{
+    const {error} = await supabase.auth.signOut()
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      {/* Main Card */}
       <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-8">
         
-        {/* Input Section */}
         <form onSubmit={submitHandler} className="space-y-4 mb-8">
           <input
             type="text"
@@ -56,14 +61,14 @@ const TaskManager = () => {
             Add Task
           </button>
         </form>
+        
+        <button onClick={signOut} className='bg-red-500 float-right cursor-pointer text-white text-base font-bold py-3 px-4 rounded shadow-sm '>Sign out</button>
 
-        {/* Task List Section */}
         <div className="space-y-4">
           {tasks?.map((task) => (
             <div key={task.id} className="border border-gray-100 bg-gray-50 rounded-lg p-5 relative group shadow-sm">
-              {/* Action Buttons */}
               <div className="absolute top-4 right-4 flex gap-2">
-                <button className="bg-amber-400 hover:bg-amber-500 text-white text-xs font-bold py-1 px-4 rounded shadow-sm transition-colors">
+                <button onClick={() => editTask(task.id)} className="bg-amber-400 hover:bg-amber-500 text-white text-xs font-bold py-1 px-4 rounded shadow-sm transition-colors">
                   Edit
                 </button>
                 <button onClick={() => deleteTask(task.id)} className="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1 px-3 rounded shadow-sm transition-colors">
@@ -71,7 +76,6 @@ const TaskManager = () => {
                 </button>
               </div>
               
-              {/* Task Content */}
               <div className="mt-6">
                 <h3 className="text-lg font-semibold text-blue-600 mb-2">
                   {task?.title}

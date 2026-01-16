@@ -1,17 +1,33 @@
 import './index.css'
 import TaskManager from './component/TaskManger'
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Auth from './component/Auth';
+import { supabase } from './supabase-client';
+import { use, useEffect, useState } from 'react';
 
 function App() {
+  const [userSession, setUserSession] = useState(null);
+
+  const fetchUserSession = async () =>{
+    const currentSession = await supabase.auth.getSession()
+    setUserSession(currentSession.data.session)
+  }
+
+  useEffect(() =>{
+    const {data: authListener} = supabase.auth.onAuthStateChange((event, session) =>{
+      setUserSession(session)
+    })
+
+    return () =>{
+      authListener.subscription.unsubscribe()
+    }
+    
+    fetchUserSession()
+  }, [])  
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route index element={<Auth />} />
-        <Route path="/tasks" element={<TaskManager />} />
-      </Routes>
-    </BrowserRouter>
+    <>
+    {userSession ? <TaskManager /> : <Auth />}
+    </>
 
   )
 }
