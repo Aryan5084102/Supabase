@@ -20,13 +20,13 @@ function App() {
     return () =>{
       authListener.subscription.unsubscribe()
     }
-    
+
     fetchUserSession()
   }, [])  
 
   return (
     <>
-    {userSession ? <TaskManager /> : <Auth />}
+    {userSession ? <TaskManager session={userSession} /> : <Auth />}
     </>
 
   )

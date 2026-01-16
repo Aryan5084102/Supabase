@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {supabase} from '../supabase-client'
 
-const TaskManager = () => {
+const TaskManager = ({session}) => {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState({ title:  '', description: '' });
+  const [taskImageFile, setTaskImageFile] = useState(null);
 
   const onChangeHandler = (e) =>{
     setNewTask({...newTask, [e.target.name] : e.target.value})
@@ -11,8 +12,10 @@ const TaskManager = () => {
 
   const submitHandler = async (e) =>{
     e.preventDefault();
-    const {data, error} = await supabase.from('task').insert(newTask).select().single()
-    console.log(data);
+
+    const imageUrl = taskImageFile ? await uploadImageToBucket(taskImageFile) : null;
+
+    const {data, error} = await supabase.from('task').insert({...newTask, email: session.user.email, image_url: imageUrl}).select().single()
     setNewTask({ title: '', description: '' })
 
     fetchTasks()
@@ -28,12 +31,42 @@ const TaskManager = () => {
   // }
 
   const fetchTasks = async () =>{
-    const {data, error} = await supabase.from('task').select('*').order('created_at', {ascending: true})
+    const {data, error} = await supabase.from('task').select('INSERT').order('created_at', {ascending: true})
     setTasks(data)
   }
 
   const signOut = async () =>{
     const {error} = await supabase.auth.signOut()
+  }
+
+  useEffect(() =>{
+    const myChannel = supabase.channel('task-channel').on('postgres_changes', { event: '*', schema: 'public', table: 'task' }, 
+      (payload) => { 
+        const newTask = payload.new 
+        setTasks((currentTasks) => [...currentTasks, newTask])
+
+        return () =>{
+          supabase.removeChannel(myChannel)
+        }}).subscribe((status) =>{
+          console.log('Subscription status:', status);
+        })
+  }, [])
+
+  const uploadImageToBucket = async (file) =>{
+    const filePath = `${Date.now()}_${file.name}`;
+
+    const {error} = await supabase.storage.from('task-bucket').upload(filePath, file)
+    if(error){
+      console.error("Error uploading file:", error.message);
+    }
+
+    const {data} = supabase.storage.from('task-bucket').getPublicUrl(filePath)
+    return {publicURL: data.publicUrl}
+  }
+  const handleFileChange = (e) =>{
+    if(e.target.files && e.target.files.length > 0){
+      setTaskImageFile(e.target.files[0])
+    }
   }
 
   return (
@@ -57,14 +90,15 @@ const TaskManager = () => {
             onChange={onChangeHandler}
             className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition-all font-mono text-sm"
           />
+          <input className='bg-gray-300' type='file' accept='image/*' onChange={handleFileChange} />
           <button  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors">
             Add Task
           </button>
         </form>
         
-        <button onClick={signOut} className='bg-red-500 float-right cursor-pointer text-white text-base font-bold py-3 px-4 rounded shadow-sm '>Sign out</button>
+        <button onClick={signOut} className=' bg-red-500 float-right cursor-pointer text-white text-base font-bold py-3 px-4 rounded shadow-sm '>Sign out</button>
 
-        <div className="space-y-4">
+        <div className="space-y-4 mt-24">
           {tasks?.map((task) => (
             <div key={task.id} className="border border-gray-100 bg-gray-50 rounded-lg p-5 relative group shadow-sm">
               <div className="absolute top-4 right-4 flex gap-2">
